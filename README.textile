@@ -73,7 +73,7 @@ Message:
 
 Reply:
 <pre>Response: 
-CREATED|{"ok":true,"_index":"twitter","_type":"tweet","_id":"2","_version":1}</pre>
+CREATED|{"ok" : true, "_index" : "twitter", "_type" : "tweet", "_id" : "2", "_version" : 1}</pre>
 
 
 h4. Search for document
