@@ -19,13 +19,13 @@
 
 package org.elasticsearch.zeromq;
 
-import static org.elasticsearch.common.util.concurrent.EsExecutors.daemonThreadFactory;
-
 import org.elasticsearch.ElasticSearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.service.NodeService;
+
+import static org.elasticsearch.common.util.concurrent.EsExecutors.*;
 
 /**
  * @author tlrx
@@ -52,17 +52,18 @@ public class ZMQServer extends AbstractLifecycleComponent<ZMQServer> {
 		daemonThreadFactory(settings, "zeromq_server").newThread(
 				new Runnable() {
 					@Override
-					public void run() {
-						transport.start();
-					}
-				}).start();
+                    public void run() {
+                        transport.start();
+                    }
+		}).start();
 	}
+
+
 
 	@Override
 	protected void doStop() throws ElasticSearchException {
-		transport.stop();
 		nodeService.removeNodeAttribute("zeromq_address");
-
+        transport.stop();
 	}
 
 	@Override
