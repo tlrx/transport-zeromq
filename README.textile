@@ -47,15 +47,18 @@ h2. Behind the scene
 The plugin exposes the REST interfaces of Elasticsearch over ØMQ sockets. The implementation uses a "router-dealer pattern":http://www.zeromq.org/sandbox:dealer, where multiple XREP sockets (2 by default, see @zeromq.workers.threads@) are listening to incoming messages (each in a dedicated thread) send by XREQ sockets on the @zeromq.router.bind@ address. This way, it is possible to send REST-like messages with ØMQ clients and get the replies back. 
 
 For example, a ØMQ client can send the following message:
-<pre>POST|/twitter/tweet/2|{"user": "kimchy","post_date": "2009-11-15T14:12:12","message": "You know, for Search"}</pre>
+<pre>POST|/twitter/tweet/2|{"user" : "kimchy", "post_date" : "2009-11-15T14:12:12", "message" : "You know, for Search"}</pre>
 
 It will receive the following response back: 
-<pre>CREATED|{"ok":true,"_index":"twitter","_type":"tweet","_id":"2","_version": 1}</pre>
+<pre>201|CREATED|{"ok" : true, "_index" : "twitter", "_type" : "tweet", "_id" : "2", "_version" : 1}</pre>
 
 The transport layer converts ØMQ messages in a given format into REST request objects that can be handled by ES. 
 
 The expected format for incoming messages is: 
 <pre><Method PUT,DELETE, POST...>|<URI, including parameters>|<JSON content></pre>
+
+The format for outcoming message is:
+<pre><Status code>|<Status name>|<JSON reply content></pre>
 
 But any other message format can be easely implemented if needed.
 
@@ -73,7 +76,7 @@ Message:
 
 Reply:
 <pre>Response: 
-CREATED|{"ok" : true, "_index" : "twitter", "_type" : "tweet", "_id" : "2", "_version" : 1}</pre>
+201|CREATED|{"ok" : true, "_index" : "twitter", "_type" : "tweet", "_id" : "2", "_version" : 1}</pre>
 
 
 h4. Search for document
@@ -83,7 +86,7 @@ Message:
 
 Reply:
 <pre>Response: 
-OK|{"took" : 29, "timed_out" : false, "_shards" : {"total" : 5, "successful" : 5, "failed" : 0}, "hits" : {"total" : 1, "max_score" : 0.30685282, "hits" : [{"_index" : "twitter", "_type" : "tweet", "_id" : "2", "_score" : 0.30685282, "_source" : {
+200|OK|{"took" : 29, "timed_out" : false, "_shards" : {"total" : 5, "successful" : 5, "failed" : 0}, "hits" : {"total" : 1, "max_score" : 0.30685282, "hits" : [{"_index" : "twitter", "_type" : "tweet", "_id" : "2", "_score" : 0.30685282, "_source" : {
     "user" : "kimchy",
     "post_date" : "2009-11-15T14:12:12",
     "message" : "You know, for Search"
@@ -98,7 +101,7 @@ Message:
 
 Reply:
 <pre>Response: 
-OK|{"ok" : true, "found" : true, "_index" : "twitter", "_type" : "tweet", "_id" : "2", "_version" : 2}</pre>
+200|OK|{"ok" : true, "found" : true, "_index" : "twitter", "_type" : "tweet", "_id" : "2", "_version" : 2}</pre>
 
 
 

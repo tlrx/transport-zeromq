@@ -71,8 +71,10 @@ public class ZMQRestResponse extends AbstractRestResponse {
 	public byte[] payload() {
 
 		// TODO optimise & challenge thoses lines...
-		ByteBuffer bStatus = ByteBuffer.wrap(this.status.toString().getBytes());
-		ByteBuffer bSep = ByteBuffer.wrap(ZMQSocket.SEPARATOR.getBytes());
+        ByteBuffer bStatusCode = ByteBuffer.wrap(Integer.toString(this.status.getStatus()).getBytes());
+		ByteBuffer bStatusName = ByteBuffer.wrap(this.status.name().getBytes());
+		ByteBuffer bSep1 = ByteBuffer.wrap(ZMQSocket.SEPARATOR.getBytes());
+        ByteBuffer bSep2 = ByteBuffer.wrap(ZMQSocket.SEPARATOR.getBytes());
 		ByteBuffer bContent = null;
 		
 		try {
@@ -81,10 +83,12 @@ public class ZMQRestResponse extends AbstractRestResponse {
 			bContent = ByteBuffer.wrap(e.getMessage().getBytes());
 		}
 
-		ByteBuffer payload = ByteBuffer.allocate(bStatus.limit() + bSep.limit() + bContent.limit());
-		payload.put(bStatus);
-		payload.put(bSep);
-		payload.put(bContent);
+		ByteBuffer payload = ByteBuffer.allocate(bStatusCode.limit() + bSep1.limit() + bStatusName.limit() + bSep2.limit() + bContent.limit());
+		payload.put(bStatusCode);
+		payload.put(bSep1);
+        payload.put(bStatusName);
+        payload.put(bSep2);
+        payload.put(bContent);
 		
 		return payload.array();
 	}
