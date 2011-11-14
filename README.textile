@@ -55,10 +55,10 @@ It will receive the following response back:
 The transport layer converts ØMQ messages in a given format into REST request objects that can be handled by ES. 
 
 The expected format for incoming messages is: 
-<pre><Method PUT,DELETE, POST...>|<URI, including parameters>|<JSON content></pre>
+bc. <Method PUT,DELETE, POST...>|<URI, including parameters>|<JSON content>
 
 The format for outcoming message is:
-<pre><Status code>|<Status name>|<JSON reply content></pre>
+bc. <Status code>|<Status name>|<JSON reply content>
 
 But any other message format can be easely implemented if needed.
 
