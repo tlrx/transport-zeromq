@@ -18,12 +18,13 @@ import org.elasticsearch.zeromq.ZMQServerTransport;
 import org.elasticsearch.zeromq.ZMQSocket;
 import org.elasticsearch.zeromq.network.ZMQAddressHelper;
 import org.zeromq.ZMQ;
+import org.zeromq.ZMQException;
 import org.zeromq.ZMQQueue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Iterator;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.elasticsearch.common.util.concurrent.EsExecutors.*;
 
@@ -45,6 +46,12 @@ public class ZMQQueueServerImpl extends
 	final String workersBinding;
 
 	private final ZMQ.Context context;
+
+    private ZMQ.Socket dealer;
+
+    private ZMQ.Socket router;
+
+    private ZMQQueue queue;
 	
 	private final ZMQRestImpl client;
 
@@ -55,6 +62,10 @@ public class ZMQQueueServerImpl extends
     private final NodeService nodeService;
 
     private volatile BoundTransportAddress boundAddress;
+
+    private final AtomicBoolean isRunning;
+
+    public static final String ZMQ_STOP_SOCKET = "stop";
 
 	@Inject
 	protected ZMQQueueServerImpl(Settings settings, NodeService nodeService, ZMQRestImpl client, NetworkService networkService) {
@@ -75,13 +86,15 @@ public class ZMQQueueServerImpl extends
 
 		logger.info("Creating ØMQ server context...");
 		context = ZMQ.context(1);
+
+        isRunning = new AtomicBoolean(true);
 	}
 
 	@Override
 	protected void doStart() throws ElasticSearchException {
 
 		logger.info("Starting ØMQ dealer socket...");
-		ZMQ.Socket dealer = context.socket(ZMQ.XREQ);
+		dealer = context.socket(ZMQ.XREQ);
 		dealer.bind(workersBinding);
 
         InetSocketAddress bindAddress;
@@ -94,7 +107,7 @@ public class ZMQQueueServerImpl extends
 		for (int i = 0; i < nbWorkers; i++) {
 
 			logger.debug("Creating worker #{}", i);
-			ZMQSocket worker = new ZMQSocket(logger, context, workersBinding, i, client);
+			ZMQSocket worker = new ZMQSocket(logger, context, workersBinding, i, client, isRunning);
 
 			daemonThreadFactory(settings, "zeromq_worker_" + i).newThread(worker).start();
 
@@ -102,7 +115,7 @@ public class ZMQQueueServerImpl extends
 		}
 
 		logger.info("Starting ØMQ router socket...");
-		ZMQ.Socket router = context.socket(ZMQ.XREP);
+		router = context.socket(ZMQ.XREP);
 		router.bind(routerBinding);
 
         InetSocketAddress publishAddress;
@@ -119,22 +132,38 @@ public class ZMQQueueServerImpl extends
         nodeService.putNodeAttribute("zeromq_address", this.boundAddress.publishAddress().toString());
 
         logger.info("Starting ØMQ queue...");
-		ZMQQueue queue = new ZMQQueue(context, router, dealer);
-		queue.run();
+        queue = new ZMQQueue(context, router, dealer);
+        try {
+            queue.run();
+        } catch (ZMQException zmqe) {
+            if(logger.isTraceEnabled()){
+                logger.trace("Exception occurs while queue was running", zmqe);
+            }
+        }
+
 	}
 
 	@Override
 	protected void doClose() throws ElasticSearchException {
 		logger.debug("Closing ØMQ server...");
-		Iterator<ZMQSocket> it = sockets.iterator();
-		
-		while (it.hasNext()) {
-			it.next().close();			
-		}
+
+        // After next incoming message, sockets will close themselves
+        isRunning.set(false);
+
+        // Let's send a foobar message
+        for (int i = 0; i < nbWorkers; i++) {
+            dealer.send(ZMQ_STOP_SOCKET.getBytes(), 0);
+        }
+
+        // Close dealer socket
+        dealer.close();
+        logger.info("ØMQ dealer socket closed");
+
+        router.close();
+        logger.info("ØMQ router socket closed");
 
 		context.term();
 		logger.debug("ØMQ server closed.");
-
 	}
 
 	@Override

@@ -1,12 +1,14 @@
 package org.elasticsearch.zeromq;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.zeromq.impl.ZMQQueueServerImpl;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
 import org.zeromq.ZMQException;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author tlrx
@@ -27,14 +29,17 @@ public class ZMQSocket implements Runnable {
 	final int id;
 
 	private final ZMQRestImpl client;
+
+    private final AtomicBoolean isRunning;
 	
-	public ZMQSocket(ESLogger logger, Context context, String workersBinding, int id, ZMQRestImpl client) {
+	public ZMQSocket(ESLogger logger, Context context, String workersBinding, int id, ZMQRestImpl client, AtomicBoolean isRunning) {
 		super();
 		this.context = context;
 		this.workersBinding = workersBinding;
 		this.id = id;
 		this.logger = logger;
 		this.client = client;
+        this.isRunning = isRunning;
 	}
 
 	@Override
@@ -42,12 +47,16 @@ public class ZMQSocket implements Runnable {
 
 		socket = context.socket(ZMQ.XREP);
 		socket.connect(workersBinding);
-		
-		while (true) {
+
+        if (logger.isInfoEnabled()) {
+            logger.info("ØMQ socket {} is listening...", id);
+        }
+
+        while (isRunning.get()) {
 
 			// Reads all parts of the message
 			List<byte[]> parts = new ArrayList<byte[]>();
-			
+
 			try {
 				
 				do {
@@ -57,33 +66,62 @@ public class ZMQSocket implements Runnable {
 				
 			} catch (ZMQException zmqe) {
 				// Close the socket
-				close();
-				return;
+				if(logger.isWarnEnabled()){
+                    logger.warn("Exception when receiving message", zmqe);
+                }
 			}
+
+            if(parts.isEmpty()){
+                continue;
+            }
 
 			// Payload
 			String payload = new String(parts.get(parts.size() - 1));
 			
-			if (logger.isTraceEnabled()) {
-	            logger.trace("ØMQ message {}", payload);
+			if (logger.isDebugEnabled()) {
+	            logger.debug("ØMQ socket {} receives message: {}", id, payload);
 	        }
-			
-			ZMQRestRequest request = new ZMQRestRequest(payload, parts);
-			ZMQRestResponse response = client.process(request);			
+
+            if(ZMQQueueServerImpl.ZMQ_STOP_SOCKET.equals(payload)){
+                continue;
+            }
+
+            ZMQRestRequest request = null;
+            try{
+                request = new ZMQRestRequest(payload, parts);
+
+            }catch (Exception e){
+                if(logger.isErrorEnabled()){
+                    logger.error("Exception when processing ØMQ message", e);
+                }
+            }
+
+            // Process the request
+            ZMQRestResponse response = response = client.process(request);
 			
 			// Sends all the message parts back
 			for(int i=0; i<(parts.size() - 1); i++){
 				socket.send(parts.get(i), ZMQ.SNDMORE);	
 			}
-			
-			// Sends the reply
-			socket.send(response.payload(), 0);
-		}
-	}
 
-	public void close() {
+            // Sends the reply
+            if (response != null) {
+                socket.send(response.payload(), 0);
+            } else {
+                // An error occured
+                socket.send("Unable to process ØMQ message, please check the format".getBytes(), 0);
+            }
+		}
+
+        // Close the socket
+        if (logger.isDebugEnabled()) {
+            logger.debug("Closing ØMQ socket {}", id);
+        }
+
 		try {
 			socket.close();
+
+            logger.debug("ØMQ socket {} is closed", id);
 		} catch (Exception e) {
 			logger.error("Exception when closing ØMQ socket", e);
 		}
