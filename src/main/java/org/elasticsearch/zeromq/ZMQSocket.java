@@ -1,6 +1,7 @@
 package org.elasticsearch.zeromq;
 
 import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.zeromq.exception.ZMQTransportException;
 import org.elasticsearch.zeromq.impl.ZMQQueueServerImpl;
 import org.zeromq.ZMQ;
 import org.zeromq.ZMQ.Context;
@@ -86,19 +87,26 @@ public class ZMQSocket implements Runnable {
                 continue;
             }
 
+            // Stores the latest exception
+            Exception lastException = null;
+
             ZMQRestRequest request = null;
+            ZMQRestResponse response = null;
             try{
+                // Construct an ES request
                 request = new ZMQRestRequest(payload, parts);
+
+                // Process the request
+                response = client.process(request);
 
             }catch (Exception e){
                 if(logger.isErrorEnabled()){
                     logger.error("Exception when processing ØMQ message", e);
                 }
+                response = null;
+                lastException = e;
             }
 
-            // Process the request
-            ZMQRestResponse response = response = client.process(request);
-			
 			// Sends all the message parts back
 			for(int i=0; i<(parts.size() - 1); i++){
 				socket.send(parts.get(i), ZMQ.SNDMORE);	
@@ -107,9 +115,12 @@ public class ZMQSocket implements Runnable {
             // Sends the reply
             if (response != null) {
                 socket.send(response.payload(), 0);
-            } else {
+            } else if(lastException != null) {
                 // An error occured
-                socket.send("Unable to process ØMQ message, please check the format".getBytes(), 0);
+                socket.send(("Unable to process ØMQ message [" + lastException.getMessage() + "]").getBytes(), 0);
+            } else {
+                // Should not happen
+                socket.send(("Unable to process ØMQ message").getBytes(), 0);
             }
 		}
 

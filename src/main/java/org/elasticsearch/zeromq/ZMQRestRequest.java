@@ -1,14 +1,17 @@
 package org.elasticsearch.zeromq;
 
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.elasticsearch.common.Bytes;
 import org.elasticsearch.common.Unicode;
 import org.elasticsearch.rest.support.AbstractRestRequest;
 import org.elasticsearch.rest.support.RestUtils;
+import org.elasticsearch.zeromq.exception.NoURIFoundZMQException;
+import org.elasticsearch.zeromq.exception.UnsupportedMethodZMQException;
+import org.elasticsearch.zeromq.exception.ZMQTransportException;
+
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author tlrx
@@ -41,6 +44,10 @@ public class ZMQRestRequest extends AbstractRestRequest {
 		if (payload != null) {
 
 			String[] s = payload.split("\\|");
+
+            if(s.length <2){
+                throw new ZMQTransportException("Invalid message format");
+            }
 			
 			// Method
 			String m = s[0];
@@ -57,10 +64,16 @@ public class ZMQRestRequest extends AbstractRestRequest {
 				this.method = Method.OPTIONS;
 			} else if ("HEAD".equalsIgnoreCase(m)) {
 				this.method = Method.HEAD;
-			}
+			} else {
+                throw new UnsupportedMethodZMQException(m);
+            }
 
 			// URI
 			this.uri = s[1];
+
+            if((this.uri == null) || ("".equals(this.uri)) || "null".equalsIgnoreCase(this.uri)){
+                throw new NoURIFoundZMQException();
+            }
 
 			int pathEndPos = uri.indexOf('?');
 			if (pathEndPos < 0) {
