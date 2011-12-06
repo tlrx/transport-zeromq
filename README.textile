@@ -17,14 +17,14 @@ h3. Installation
 Type the command in your favorite shell :
 
 <pre>
-$ bin\plugin -install tlrx/transport-zeromq/0.0.1
+$ bin\plugin -install tlrx/transport-zeromq/0.0.2
 </pre>
 
 Elasticsearch automatically install the plugin:
 
 <pre>
--> Installing tlrx/transport-zeromq/0.0.1...
-Trying https://github.com/downloads/tlrx/transport-zeromq/transport-zeromq-0.0.1.zip...
+-> Installing tlrx/transport-zeromq/0.0.2...
+Trying https://github.com/downloads/tlrx/transport-zeromq/transport-zeromq-0.0.2.zip...
 Downloading ..........DONE
 Installed transport-zeromq
 </pre>
