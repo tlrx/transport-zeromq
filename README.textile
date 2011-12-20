@@ -43,17 +43,11 @@ zeromq.workers.bind: inproc://es_zeromq_workers
 Restart Elasticsearch.
 
 If you have the following error
-<pre>
-{0.18.6}: Initialization Failed ...
-1) UnsatisfiedLinkError[no jzmq in java.library.path]2) NoClassDefFoundError[Could not initialize class org.zeromq.ZMQ]
-</pre>
+<pre>{0.18.6}: Initialization Failed ...
+1) UnsatisfiedLinkError[no jzmq in java.library.path]2) NoClassDefFoundError[Could not initialize class org.zeromq.ZMQ]</pre>
 
 You can try to update your LD_LIBRARY_PATH:
-<pre>
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
-</pre>
-
-
+<pre>export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib</pre>
 
 
 
