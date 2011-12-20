@@ -51,9 +51,9 @@ public class ZMQQueueServerImpl extends
 
     private ZMQ.Socket router;
 
-    private ZMQQueue queue;
-	
-	private final ZMQRestImpl client;
+    private  Thread queueThread;
+
+    private final ZMQRestImpl client;
 
 	private CopyOnWriteArrayList<ZMQSocket> sockets = new CopyOnWriteArrayList<ZMQSocket>();
 
@@ -93,7 +93,7 @@ public class ZMQQueueServerImpl extends
 	@Override
 	protected void doStart() throws ElasticSearchException {
 
-		logger.info("Starting ØMQ dealer socket...");
+		logger.debug("Starting ØMQ dealer socket...");
 		dealer = context.socket(ZMQ.XREQ);
 		dealer.bind(workersBinding);
 
@@ -114,7 +114,7 @@ public class ZMQQueueServerImpl extends
 			sockets.add(worker);
 		}
 
-		logger.info("Starting ØMQ router socket...");
+		logger.debug("Starting ØMQ router socket...");
 		router = context.socket(ZMQ.XREP);
 		router.bind(routerBinding);
 
@@ -131,10 +131,11 @@ public class ZMQQueueServerImpl extends
         }
         nodeService.putNodeAttribute("zeromq_address", this.boundAddress.publishAddress().toString());
 
-        logger.info("Starting ØMQ queue...");
-        queue = new ZMQQueue(context, router, dealer);
+        logger.debug("Starting ØMQ queue...");
+
+        queueThread = new Thread(new ZMQQueue(context, router, dealer));
         try {
-            queue.run();
+            queueThread.start();
         } catch (ZMQException zmqe) {
             if(logger.isTraceEnabled()){
                 logger.trace("Exception occurs while queue was running", zmqe);
@@ -155,15 +156,24 @@ public class ZMQQueueServerImpl extends
             dealer.send(ZMQ_STOP_SOCKET.getBytes(), 0);
         }
 
+        // Stops the queue
+        try {
+            queueThread.interrupt();
+        } catch (ZMQException zmqe) {
+            if(logger.isTraceEnabled()){
+                logger.trace("Exception occurs while closing queue", zmqe);
+            }
+        }
+
         // Close dealer socket
         dealer.close();
-        logger.info("ØMQ dealer socket closed");
+        logger.debug("ØMQ dealer socket closed");
 
         router.close();
-        logger.info("ØMQ router socket closed");
+        logger.debug("ØMQ router socket closed");
 
 		context.term();
-		logger.debug("ØMQ server closed.");
+		logger.info("ØMQ server closed.");
 	}
 
 	@Override
