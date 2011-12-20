@@ -132,7 +132,7 @@ public class ZMQSocket implements Runnable {
 		try {
 			socket.close();
 
-            logger.debug("ØMQ socket {} is closed", id);
+            logger.info("ØMQ socket {} is closed", id);
 		} catch (Exception e) {
 			logger.error("Exception when closing ØMQ socket", e);
 		}
