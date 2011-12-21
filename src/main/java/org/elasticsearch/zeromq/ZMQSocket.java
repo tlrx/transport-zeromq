@@ -1,6 +1,7 @@
 package org.elasticsearch.zeromq;
 
 import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.rest.RestStatus;
 import org.elasticsearch.zeromq.exception.ZMQTransportException;
 import org.elasticsearch.zeromq.impl.ZMQQueueServerImpl;
 import org.zeromq.ZMQ;
@@ -9,6 +10,7 @@ import org.zeromq.ZMQException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -32,8 +34,10 @@ public class ZMQSocket implements Runnable {
 	private final ZMQRestImpl client;
 
     private final AtomicBoolean isRunning;
+
+    private final CountDownLatch waitForSocketsClose;
 	
-	public ZMQSocket(ESLogger logger, Context context, String workersBinding, int id, ZMQRestImpl client, AtomicBoolean isRunning) {
+	public ZMQSocket(ESLogger logger, Context context, String workersBinding, int id, ZMQRestImpl client, AtomicBoolean isRunning, CountDownLatch waitForSocketsClose) {
 		super();
 		this.context = context;
 		this.workersBinding = workersBinding;
@@ -41,6 +45,7 @@ public class ZMQSocket implements Runnable {
 		this.logger = logger;
 		this.client = client;
         this.isRunning = isRunning;
+        this.waitForSocketsClose = waitForSocketsClose;
 	}
 
 	@Override
@@ -78,33 +83,37 @@ public class ZMQSocket implements Runnable {
 
 			// Payload
 			String payload = new String(parts.get(parts.size() - 1));
-			
-			if (logger.isDebugEnabled()) {
-	            logger.debug("ØMQ socket {} receives message: {}", id, payload);
-	        }
 
-            if(ZMQQueueServerImpl.ZMQ_STOP_SOCKET.equals(payload)){
-                continue;
+            if(logger.isDebugEnabled()){
+                logger.debug("ØMQ socket {} receives message: {}", id, payload);
             }
+
+            ZMQRestResponse response = null;
+            ZMQRestRequest request = null;
 
             // Stores the latest exception
             Exception lastException = null;
 
-            ZMQRestRequest request = null;
-            ZMQRestResponse response = null;
-            try{
-                // Construct an ES request
-                request = new ZMQRestRequest(payload, parts);
-
-                // Process the request
-                response = client.process(request);
-
-            }catch (Exception e){
-                if(logger.isErrorEnabled()){
-                    logger.error("Exception when processing ØMQ message", e);
+            if(ZMQQueueServerImpl.ZMQ_STOP_SOCKET.equals(payload)){
+                if(logger.isDebugEnabled()){
+                    logger.debug("ØMQ socket {} receives stop message", id);
                 }
-                response = null;
-                lastException = e;
+
+            } else {
+                try{
+                    // Construct an ES request
+                    request = new ZMQRestRequest(payload, parts);
+
+                    // Process the request
+                    response = client.process(request);
+
+                }catch (Exception e){
+                    if(logger.isErrorEnabled()){
+                        logger.error("Exception when processing ØMQ message", e);
+                    }
+                    response = null;
+                    lastException = e;
+                }
             }
 
 			// Sends all the message parts back
@@ -115,24 +124,29 @@ public class ZMQSocket implements Runnable {
             // Sends the reply
             if (response != null) {
                 socket.send(response.payload(), 0);
+
             } else if(lastException != null) {
                 // An error occured
                 socket.send(("Unable to process ØMQ message [" + lastException.getMessage() + "]").getBytes(), 0);
+
             } else {
-                // Should not happen
-                socket.send(("Unable to process ØMQ message").getBytes(), 0);
+                // Should not happen except when stop message is received
+                socket.send(("Unable to process ØMQ message or stop socket message received").getBytes(), 0);
             }
 		}
 
-        // Close the socket
-        if (logger.isDebugEnabled()) {
-            logger.debug("Closing ØMQ socket {}", id);
-        }
-
 		try {
-			socket.close();
+            if (logger.isDebugEnabled()) {
+                logger.debug("Closing ØMQ socket {}", id);
+            }
 
+            // Close the socket
+            socket.close();
             logger.info("ØMQ socket {} is closed", id);
+
+            // Decrement the countdownlatch
+            this.waitForSocketsClose.countDown();
+
 		} catch (Exception e) {
 			logger.error("Exception when closing ØMQ socket", e);
 		}

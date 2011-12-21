@@ -24,6 +24,8 @@ import org.zeromq.ZMQQueue;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.elasticsearch.common.util.concurrent.EsExecutors.*;
@@ -67,6 +69,8 @@ public class ZMQQueueServerImpl extends
 
     public static final String ZMQ_STOP_SOCKET = "stop";
 
+    private static volatile CountDownLatch waitForSocketsClose;
+
 	@Inject
 	protected ZMQQueueServerImpl(Settings settings, NodeService nodeService, ZMQRestImpl client, NetworkService networkService) {
 		super(settings);
@@ -104,10 +108,12 @@ public class ZMQQueueServerImpl extends
             throw new BindHttpException("Failed to resolve host [" + workersBinding + "]", e);
         }
 
+        waitForSocketsClose = new CountDownLatch(nbWorkers);
+
 		for (int i = 0; i < nbWorkers; i++) {
 
 			logger.debug("Creating worker #{}", i);
-			ZMQSocket worker = new ZMQSocket(logger, context, workersBinding, i, client, isRunning);
+			ZMQSocket worker = new ZMQSocket(logger, context, workersBinding, i, client, isRunning, waitForSocketsClose);
 
 			daemonThreadFactory(settings, "zeromq_worker_" + i).newThread(worker).start();
 
@@ -132,16 +138,10 @@ public class ZMQQueueServerImpl extends
         nodeService.putNodeAttribute("zeromq_address", this.boundAddress.publishAddress().toString());
 
         logger.debug("Starting ØMQ queue...");
-
         queueThread = new Thread(new ZMQQueue(context, router, dealer));
-        try {
-            queueThread.start();
-        } catch (ZMQException zmqe) {
-            if(logger.isTraceEnabled()){
-                logger.trace("Exception occurs while queue was running", zmqe);
-            }
-        }
+        queueThread.start();
 
+        logger.info("ØMQ server started");
 	}
 
 	@Override
@@ -151,29 +151,35 @@ public class ZMQQueueServerImpl extends
         // After next incoming message, sockets will close themselves
         isRunning.set(false);
 
-        // Let's send a foobar message
-        for (int i = 0; i < nbWorkers; i++) {
+        while(this.waitForSocketsClose.getCount() > 0){
+            // Let's send a stop message to the sockets
             dealer.send(ZMQ_STOP_SOCKET.getBytes(), 0);
+
+            // Wait a few
+            try {
+                waitForSocketsClose.await(50, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                // nothing
+            }
+
+            // Receive a response... or not
+            dealer.recv(ZMQ.NOBLOCK);
         }
 
         // Stops the queue
-        try {
-            queueThread.interrupt();
-        } catch (ZMQException zmqe) {
-            if(logger.isTraceEnabled()){
-                logger.trace("Exception occurs while closing queue", zmqe);
-            }
-        }
+        queueThread.interrupt();
+        logger.debug("ØMQ queue thread interrupted");
+
+        // Stop the router socket, no accept message anymore
+        router.close();
+        logger.debug("ØMQ router socket closed");
 
         // Close dealer socket
         dealer.close();
         logger.debug("ØMQ dealer socket closed");
 
-        router.close();
-        logger.debug("ØMQ router socket closed");
-
 		context.term();
-		logger.info("ØMQ server closed.");
+		logger.info("ØMQ server closed");
 	}
 
 	@Override
