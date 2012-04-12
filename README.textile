@@ -4,9 +4,16 @@ This plugin exposes the REST interfaces of "Elasticsearch":http://www.elasticsea
 
 h2. Installation
 
+h2. Versions
+
+|_. ØMQ Transport Plugin|_. ElasticSearch	|
+|  master (0.0.3)   	|  master (0.19.2)	|
+|     0.0.2         	|     0.18.2		|
+
+
 h3. Requirements
 
-Before installing and using this plugin with Elasticsearch (0.18), you need to install ZeroMQ Java Binding library (2.1) on your system. This binding uses native library to work. 
+Before installing and using this plugin with Elasticsearch (0.19.2), you need to install ZeroMQ Java Binding library (2.2) on your system. This binding uses native library to work. 
 
 The "ZeroMQ":http//www.zeromq.org/ website is a great place to start installing the libraries, specially the "Java binding page":http://www.zeromq.org/bindings:java
 
@@ -17,19 +24,19 @@ h3. Installation
 Type the command in your favorite shell :
 
 <pre>
-$ bin\plugin -install tlrx/transport-zeromq/0.0.2
+$ bin\plugin -install tlrx/transport-zeromq/0.0.3
 </pre>
 
 Elasticsearch automatically install the plugin:
 
 <pre>
--> Installing tlrx/transport-zeromq/0.0.2...
-Trying https://github.com/downloads/tlrx/transport-zeromq/transport-zeromq-0.0.2.zip...
+-> Installing tlrx/transport-zeromq/0.0.3...
+Trying https://github.com/downloads/tlrx/transport-zeromq/transport-zeromq-0.0.3.zip...
 Downloading ..........DONE
 Installed transport-zeromq
 </pre>
 
-Then, you must replace the file *plugins/transport-zeromq/jzmq-2.1.0.jar* with the Java binding compiled for your system.
+Then, you must replace the file *plugins/transport-zeromq/jzmq-1.0.0.jar* with the Java binding compiled for your system.
 
 Finally, edit Elasticsearch configuration file @config/elasticsearch.yml@ and add the properties:
 
@@ -43,17 +50,18 @@ zeromq.workers.bind: inproc://es_zeromq_workers
 Restart Elasticsearch.
 
 If you have the following error
-<pre>{0.18.6}: Initialization Failed ...
+<pre>Initialization Failed ...
 1) UnsatisfiedLinkError[no jzmq in java.library.path]2) NoClassDefFoundError[Could not initialize class org.zeromq.ZMQ]</pre>
 
 You can try to update your LD_LIBRARY_PATH:
 <pre>export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib</pre>
 
+You can also read the documentation of the "ØMQ Java binding":http://www.zeromq.org/bindings:java. 
 
 
 h2. Behind the scene
 
-The plugin exposes the REST interfaces of Elasticsearch over ØMQ sockets. The implementation uses a "router-dealer pattern":http://www.zeromq.org/sandbox:dealer, where multiple XREP sockets (2 by default, see @zeromq.workers.threads@) are listening to incoming messages (each in a dedicated thread) send by XREQ sockets on the @zeromq.router.bind@ address. This way, it is possible to send REST-like messages with ØMQ clients and get the replies back. 
+The plugin exposes the REST interfaces of Elasticsearch over ØMQ sockets. The implementation uses a "router-dealer pattern":http://www.zeromq.org/sandbox:dealer, where multiple ROUTER sockets (2 by default, see @zeromq.workers.threads@) are listening to incoming messages (each in a dedicated thread) send by DEALER sockets on the @zeromq.router.bind@ address. This way, it is possible to send REST-like messages with ØMQ clients and get the replies back. 
 
 For example, a ØMQ client can send the following message:
 <pre>POST|/twitter/tweet/2|{"user" : "kimchy", "post_date" : "2009-11-15T14:12:12", "message" : "You know, for Search"}</pre>
@@ -70,7 +78,6 @@ The format for outcoming message is:
 <pre><code> <Status code>|<Status name>|<JSON reply content> </code></pre>
 
 But any other message format can be easely implemented if needed.
-
 
 
 
@@ -113,7 +120,8 @@ Reply:
 200|OK|{"ok" : true, "found" : true, "_index" : "twitter", "_type" : "tweet", "_id" : "2", "_version" : 2}</pre>
 
 
-
+h3. Other examples
+The @ZMQTransportPluginTest@ Java class in test package has other test examples.
 
 
 Thanks to "David Pilato":https://github.com/dadoonet for the Maven pom and README files.

@@ -10,7 +10,7 @@
 	<url>https://github.com/tlrx/transport-zeromq</url>
 	
 	<properties>
-		<elasticsearch.version>0.18.2</elasticsearch.version>
+		<elasticsearch.version>0.19.2</elasticsearch.version>
 	</properties>
 
 	<scm>
@@ -33,7 +33,7 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.8.2</version>
+			<version>4.10</version>
 		</dependency>
 		<dependency>
 			<groupId>org.elasticsearch</groupId>
@@ -43,9 +43,9 @@
 		<dependency>
 			<groupId>org.elasticsearch.zeromq</groupId>
 			<artifactId>jzmq</artifactId>
-			<version>2.1.0</version>
+			<version>1.0.0</version>
 			<scope>system</scope>
-			<systemPath>${project.basedir}/jzmq-2.1.0.jar</systemPath>
+			<systemPath>${project.basedir}/jzmq-1.0.0.jar</systemPath>
 		</dependency>
 	</dependencies>	
 
@@ -105,19 +105,6 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>
-			<!-- Skip Surefire tests -->
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>2.9</version>
-				<configuration>
-					<skipTests>true</skipTests>
-					<additionalClasspathElements>
-						<additionalClasspathElement>${project.build.directory}/classes/conf</additionalClasspathElement>
-						<additionalClasspathElement>${project.build.directory}/lib</additionalClasspathElement>
-					</additionalClasspathElements>
-				</configuration>
 			</plugin>
 			<!-- Generate the release zip file (run during package step) -->
 			<plugin>

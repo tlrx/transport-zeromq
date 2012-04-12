@@ -62,7 +62,7 @@ public class ZMQServer extends AbstractLifecycleComponent<ZMQServer> {
 
 	@Override
 	protected void doStop() throws ElasticSearchException {
-		nodeService.removeNodeAttribute("zeromq_address");
+		nodeService.removeAttribute("zeromq_address");
         transport.stop();
 	}
 

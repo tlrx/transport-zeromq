@@ -33,8 +33,7 @@ public class ZMQServerModule extends AbstractModule {
     public ZMQServerModule(Settings settings) {
         this.settings = settings;
     }
-
-    @SuppressWarnings({"unchecked"}) 
+ 
     @Override 
     protected void configure() {
         bind(ZMQRestImpl.class).asEagerSingleton();

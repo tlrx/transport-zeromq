@@ -3,6 +3,15 @@
  */
 package org.elasticsearch.zeromq.impl;
 
+import static org.elasticsearch.common.util.concurrent.EsExecutors.daemonThreadFactory;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.elasticsearch.ElasticSearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
@@ -18,17 +27,7 @@ import org.elasticsearch.zeromq.ZMQServerTransport;
 import org.elasticsearch.zeromq.ZMQSocket;
 import org.elasticsearch.zeromq.network.ZMQAddressHelper;
 import org.zeromq.ZMQ;
-import org.zeromq.ZMQException;
 import org.zeromq.ZMQQueue;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.elasticsearch.common.util.concurrent.EsExecutors.*;
 
 /**
  * Implementation of {@link ZMQServerTransport} based on a Router-Dealer-Queue
@@ -80,7 +79,7 @@ public class ZMQQueueServerImpl extends
 		
 		logger.debug("Reading ØMQ transport layer settings...");
 
-		routerBinding = settings.get("zeromq.router.bind", "tcp://localhost:9700");
+		routerBinding = settings.get("zeromq.router.bind", "tcp://127.0.0.1:9700");
 		nbWorkers = settings.getAsInt("zeromq.workers.threads", 3);
 		workersBinding = settings.get("zeromq.workers.bind", "inproc://es_zeromq_workers");
 
@@ -98,7 +97,7 @@ public class ZMQQueueServerImpl extends
 	protected void doStart() throws ElasticSearchException {
 
 		logger.debug("Starting ØMQ dealer socket...");
-		dealer = context.socket(ZMQ.XREQ);
+		dealer = context.socket(ZMQ.DEALER);
 		dealer.bind(workersBinding);
 
         InetSocketAddress bindAddress;
@@ -121,7 +120,7 @@ public class ZMQQueueServerImpl extends
 		}
 
 		logger.debug("Starting ØMQ router socket...");
-		router = context.socket(ZMQ.XREP);
+		router = context.socket(ZMQ.ROUTER);
 		router.bind(routerBinding);
 
         InetSocketAddress publishAddress;
@@ -135,7 +134,7 @@ public class ZMQQueueServerImpl extends
         if (logger.isInfoEnabled()) {
             logger.info("{}", this.boundAddress);
         }
-        nodeService.putNodeAttribute("zeromq_address", this.boundAddress.publishAddress().toString());
+        nodeService.putAttribute("zeromq_address", this.boundAddress.publishAddress().toString());
 
         logger.debug("Starting ØMQ queue...");
         queueThread = new Thread(new ZMQQueue(context, router, dealer));
@@ -151,7 +150,7 @@ public class ZMQQueueServerImpl extends
         // After next incoming message, sockets will close themselves
         isRunning.set(false);
 
-        while(this.waitForSocketsClose.getCount() > 0){
+        while(ZMQQueueServerImpl.waitForSocketsClose.getCount() > 0){
             // Let's send a stop message to the sockets
             dealer.send(ZMQ_STOP_SOCKET.getBytes(), 0);
 

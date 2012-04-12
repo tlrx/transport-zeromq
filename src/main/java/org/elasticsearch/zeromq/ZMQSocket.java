@@ -1,17 +1,15 @@
 package org.elasticsearch.zeromq;
 
-import org.elasticsearch.common.logging.ESLogger;
-import org.elasticsearch.rest.RestStatus;
-import org.elasticsearch.zeromq.exception.ZMQTransportException;
-import org.elasticsearch.zeromq.impl.ZMQQueueServerImpl;
-import org.zeromq.ZMQ;
-import org.zeromq.ZMQ.Context;
-import org.zeromq.ZMQException;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.elasticsearch.common.logging.ESLogger;
+import org.elasticsearch.zeromq.impl.ZMQQueueServerImpl;
+import org.zeromq.ZMQ;
+import org.zeromq.ZMQ.Context;
+import org.zeromq.ZMQException;
 
 /**
  * @author tlrx
@@ -51,7 +49,7 @@ public class ZMQSocket implements Runnable {
 	@Override
 	public void run() {
 
-		socket = context.socket(ZMQ.XREP);
+		socket = context.socket(ZMQ.ROUTER);
 		socket.connect(workersBinding);
 
         if (logger.isInfoEnabled()) {
