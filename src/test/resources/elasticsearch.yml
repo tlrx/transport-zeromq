@@ -1,0 +1,17 @@
+# Elasticsearch configuration for unit tests
+node:
+	data: true
+	local: true
+
+path:
+	data: ./target/es/data
+
+index:
+    store:
+        type: memory
+
+# ZeroMQ Transport config
+zeromq.router.bind: tcp://*:9800
+zeromq.workers.threads: 2
+zeromq.workers.bind: inproc://es_zeromq_workers
+
