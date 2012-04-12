@@ -93,8 +93,8 @@ public class ZMQSocket implements Runnable {
             Exception lastException = null;
 
             if(ZMQQueueServerImpl.ZMQ_STOP_SOCKET.equals(payload)){
-                if(logger.isDebugEnabled()){
-                    logger.debug("ØMQ socket {} receives stop message", id);
+                if(logger.isInfoEnabled()){
+                    logger.info("ØMQ socket {} receives stop message", id);
                 }
 
             } else {

@@ -145,12 +145,13 @@ public class ZMQQueueServerImpl extends
 
 	@Override
 	protected void doClose() throws ElasticSearchException {
-		logger.debug("Closing ØMQ server...");
+		logger.info("Closing ØMQ server...");
 
         // After next incoming message, sockets will close themselves
         isRunning.set(false);
 
         while(ZMQQueueServerImpl.waitForSocketsClose.getCount() > 0){
+        	
             // Let's send a stop message to the sockets
             dealer.send(ZMQ_STOP_SOCKET.getBytes(), 0);
 
@@ -167,15 +168,15 @@ public class ZMQQueueServerImpl extends
 
         // Stops the queue
         queueThread.interrupt();
-        logger.debug("ØMQ queue thread interrupted");
+        logger.info("ØMQ queue thread interrupted");
 
         // Stop the router socket, no accept message anymore
         router.close();
-        logger.debug("ØMQ router socket closed");
+        logger.info("ØMQ router socket closed");
 
         // Close dealer socket
         dealer.close();
-        logger.debug("ØMQ dealer socket closed");
+        logger.info("ØMQ dealer socket closed");
 
 		context.term();
 		logger.info("ØMQ server closed");
