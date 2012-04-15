@@ -15,7 +15,7 @@ h3. Requirements
 
 Before installing and using this plugin with Elasticsearch (0.19.2), you need to install ZeroMQ Java Binding library (2.2) on your system. This binding uses native library to work. 
 
-The "ZeroMQ":http//www.zeromq.org/ website is a great place to start installing the libraries, specially the "Java binding page":http://www.zeromq.org/bindings:java
+The "ZeroMQ":http://www.zeromq.org/ website is a great place to start installing the libraries, specially the "Java binding page":http://www.zeromq.org/bindings:java
 
 If you want to develop or modify this plugin, I encourage you to read the "ØMQ - The Guide":http://zguide.zeromq.org/page:all which is very well documented. 
 
