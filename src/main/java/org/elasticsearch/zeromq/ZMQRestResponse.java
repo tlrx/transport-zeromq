@@ -3,7 +3,7 @@ package org.elasticsearch.zeromq;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.elasticsearch.common.Bytes;
+import org.apache.lucene.search.FieldCache.Bytes;
 import org.elasticsearch.rest.AbstractRestResponse;
 import org.elasticsearch.rest.RestStatus;
 
@@ -37,7 +37,7 @@ public class ZMQRestResponse extends AbstractRestResponse {
 	@Override
 	public byte[] content() throws IOException {
 		if (body == null) {
-			return Bytes.EMPTY_ARRAY;
+			return new byte[0];
 		}
 		return body.array();
 	}
@@ -91,5 +91,12 @@ public class ZMQRestResponse extends AbstractRestResponse {
         payload.put(bContent);
 		
 		return payload.array();
+	}
+
+	@Override
+	public int contentOffset() throws IOException
+	{
+		// TODO Auto-generated method stub
+		return 0;
 	}
 }

@@ -5,12 +5,12 @@
 	<groupId>org.elasticsearch.plugin</groupId>
 	<artifactId>transport-zeromq</artifactId>
 	<packaging>jar</packaging>
-	<version>0.0.4-SNAPSHOT</version>
+	<version>0.0.5-SNAPSHOT</version>
 	<name>ØMQ transport layer plugin for Elasticsearch</name>
-	<url>https://github.com/tlrx/transport-zeromq</url>
+	<url>https://github.com/itiu/transport-zeromq</url>
 	
 	<properties>
-		<elasticsearch.version>0.19.2</elasticsearch.version>
+		<elasticsearch.version>0.90.0</elasticsearch.version>
 	</properties>
 
 	<scm>
@@ -43,9 +43,9 @@
 		<dependency>
 			<groupId>org.elasticsearch.zeromq</groupId>
 			<artifactId>jzmq</artifactId>
-			<version>1.0.0</version>
+			<version>1.1.0-SNAPSHOT</version>
 			<scope>system</scope>
-			<systemPath>${project.basedir}/jzmq-1.0.0.jar</systemPath>
+			<systemPath>${project.basedir}/jzmq-1.1.0-SNAPSHOT.jar</systemPath>
 		</dependency>
 	</dependencies>	
 
