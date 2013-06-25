@@ -5,9 +5,15 @@ import static org.elasticsearch.common.xcontent.XContentFactory.jsonBuilder;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -47,9 +53,11 @@ public class ZMQTransportPluginTest {
       if (node != null) {
          node.close();
       }
-
       try {
-         context.term();
+         if (context != null) {
+            // This is done in finalize, and will hang failed tests (not terribly helpful)
+            //context.term();
+         }
       } catch (Exception e2) {
          // ignore
       }
@@ -130,7 +138,7 @@ public class ZMQTransportPluginTest {
       } catch (UnsupportedEncodingException e) {
          Assert.fail("Exception when sending/receiving message");
       }
-      if (method.equals("PUT") && !json.isEmpty()) {
+      if (method.equals("PUT") && json != null && !json.isEmpty()) {
          recordsInserted++;
       }
 
@@ -156,53 +164,50 @@ public class ZMQTransportPluginTest {
    }
 
    @Test
-   public void testAsyncronousSendAndReceive() {
-      System.out.println("Async Test start:");
-      ZMQ.Socket socket;
-      socket = getSocket();
+   public void testAsyncronousSendAndReceiveOneThread() throws InterruptedException, ExecutionException {
 
-      String method;
-      method = "PUT";
+      System.out.println("testAsyncronousSendAndReceiveOneThread");
+      ExecutorService pool = Executors.newFixedThreadPool(1);
+      Set<Future<Integer>> returnSet;
+      returnSet = new HashSet<>();
 
-      String uriBase;
-      uriBase = "/async_tests/test/";
-
-      String jsonBase;
-      jsonBase = "{\"test\":";
-      System.out.println("Sending multiple strings:");
-      Set<String> expectedReplies = new HashSet<>();
-      Integer i = 0;
-      for (; i < 10; i++) {
-         String json = jsonBase + i.toString() + "}";
-         System.out.println("Sending " + method + "|" + uriBase + i.toString() + "|" + json);
-         sendOnly(method, uriBase + i.toString(), json, socket);
-         String expected;
-         expected = "201|CREATED|{\"ok\":true,\"_index\":\"async_tests\",\"_type\":\"test\",\"_id\":\"";
-         expected += i.toString();
-         expected += "\",\"_version\":1}";
-         expectedReplies.add(expected);
+      Callable<Integer> job = new AsyncTestThread(address, "async_tests", "test");
+      Future<Integer> returnValue = pool.submit(job);
+      returnSet.add(returnValue);
+      for (Future<Integer> future : returnSet) {
+         recordsInserted += future.get();
       }
-      String reply;
-      i = 0;
-      System.out.println("receiving replies:");
-      for (; i < 10; i++) {
-         System.out.println("receiving reply:" + i.toString());
-         reply = recvOnly(socket);
-         System.out.println("Got " + reply);
-         Assert.assertTrue(expectedReplies.remove(reply));
+
+   }
+
+   @Test
+   public void testAsyncronousSendAndReceiveMultipleThread() throws InterruptedException, ExecutionException {
+      System.out.println("testAsyncronousSendAndReceiveMultipleThread");
+      ExecutorService pool = Executors.newFixedThreadPool(100);
+      Set<Future<Integer>> returnSet;
+      returnSet = new HashSet<>();
+
+      for (Integer i = 0; i < 100; i++) {
+         Callable<Integer> job = new AsyncTestThread(address, "async_tests", "test" + i.toString());
+         Future<Integer> returnValue = pool.submit(job);
+         returnSet.add(returnValue);
       }
-      Assert.assertTrue(expectedReplies.isEmpty());
-      closeSocket(socket);
+
+      for (Future<Integer> future : returnSet) {
+         recordsInserted += future.get();
+      }
    }
 
    @Test
    public void testDeleteMissingIndex() {
+      System.out.println("testDeleteMissingIndex");
       String response = sendAndReceive("DELETE", "/test-index-missing/", null);
       Assert.assertEquals("404|NOT_FOUND|{\"error\":\"IndexMissingException[[test-index-missing] missing]\",\"status\":404}", response);
    }
 
    @Test
    public void testCreateIndex() {
+      System.out.println("testCreateIndex");
       String response = sendAndReceive("DELETE", "/books/", null);
       Assert.assertNotNull(response);
 
@@ -212,6 +217,7 @@ public class ZMQTransportPluginTest {
 
    @Test
    public void testMapping() throws IOException {
+      System.out.println("testMapping");
       XContentBuilder mapping = jsonBuilder()
               .startObject()
               .startObject("book")
@@ -239,6 +245,7 @@ public class ZMQTransportPluginTest {
 
    @Test
    public void testIndex() throws IOException {
+      System.out.println("testIndex");
       XContentBuilder book1 = jsonBuilder()
               .startObject()
               .field("title", "Les Misérables")
@@ -276,14 +283,17 @@ public class ZMQTransportPluginTest {
 
    @Test
    public void testRefresh() throws IOException {
+      System.out.println("testRefresh");
       String response = sendAndReceive("GET", "/_all/_refresh", null);
       Assert.assertTrue(response.startsWith("200|OK"));
    }
 
    @Test
    public void testSearch() throws IOException {
+      System.out.println("testSearch");
       String response = sendAndReceive("GET", "/_all/_search", "{\"query\":{\"match_all\":{}}}");
-      Assert.assertTrue(response.contains("\"hits\":{\"total\":"+recordsInserted.toString()));
+      System.out.println(response);
+      Assert.assertTrue(response.contains("\"hits\":{\"total\":" + recordsInserted.toString()));
 
       response = sendAndReceive("GET", "_search", "{\"query\":{\"bool\":{\"must\":[{\"range\":{\"year\":{\"gte\":1820,\"lte\":1832}}}],\"must_not\":[],\"should\":[]}},\"from\":0,\"size\":50,\"sort\":[],\"facets\":{},\"version\":true}:");
       Assert.assertTrue(response.contains("\"hits\":{\"total\":2"));
@@ -291,6 +301,7 @@ public class ZMQTransportPluginTest {
 
    @Test
    public void testGet() throws IOException {
+      System.out.println("testGet");
       String response = sendAndReceive("GET", "/books/book/2", null);
       Assert.assertTrue(response.contains("Notre-Dame de Paris"));
    }
