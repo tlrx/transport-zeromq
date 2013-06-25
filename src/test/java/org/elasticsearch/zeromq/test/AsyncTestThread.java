@@ -86,6 +86,16 @@ public class AsyncTestThread implements Callable<Integer> {
    }
 
    /**
+    * Send a message on the internal socket
+    * 
+    * @param method
+    * @param uri
+    * @param json 
+    */
+   public void send(String method, String uri, String json) {
+      sendOnly(method,uri,json,mSocket);
+   }
+   /**
     * Receive a response to a REST query previously sent
     *
     * @param method
@@ -104,6 +114,13 @@ public class AsyncTestThread implements Callable<Integer> {
       return result;
    }
 
+   /**
+    * Receive on the internal socket 
+    * @return 
+    */
+   public String recv() {
+      return recvOnly(mSocket);
+   }
    public AsyncTestThread(String address, String index, String type) {
       mAddress = address;
       mUri = "/" + index + "/" + type + "/";

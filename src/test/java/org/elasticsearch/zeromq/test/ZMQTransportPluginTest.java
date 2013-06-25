@@ -19,17 +19,14 @@ import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
-import org.elasticsearch.zeromq.ZMQSocket;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.zeromq.ZMQ;
 
 public class ZMQTransportPluginTest {
 
    private static Node node = null;
-   private static ZMQ.Context context = null;
    /*
     * ØMQ Socket binding adress, must be coherent with elasticsearch.yml config file 
     */
@@ -43,23 +40,12 @@ public class ZMQTransportPluginTest {
               .settings(
               ImmutableSettings.settingsBuilder()
               .put("es.config", "elasticsearch.yml")).node();
-
-      // Instantiate a ZMQ context
-      context = ZMQ.context(1);
    }
 
    @AfterClass
    public static void tearDownAfterClass() throws Exception {
       if (node != null) {
          node.close();
-      }
-      try {
-         if (context != null) {
-            // This is done in finalize, and will hang failed tests (not terribly helpful)
-            //context.term();
-         }
-      } catch (Exception e2) {
-         // ignore
       }
    }
 
@@ -72,94 +58,13 @@ public class ZMQTransportPluginTest {
     * @return
     */
    private String sendAndReceive(String method, String uri, String json) {
+      AsyncTestThread job = new AsyncTestThread(address, "", "");
 
-      ZMQ.Socket socket;
-      socket = getSocket();
-
-      sendOnly(method, uri, json, socket);
+      job.send(method, uri, json);
 
       String result;
-      result = recvOnly(socket);
-
-      closeSocket(socket);
-
-      return result;
-   }
-
-   /**
-    * Get a connected ZMQ socket
-    *
-    * @return
-    */
-   private ZMQ.Socket getSocket() {
-      ZMQ.Socket socket = context.socket(ZMQ.DEALER);
-      socket.connect(address);
-
-      // Handshake
-      try {
-         Thread.sleep(100);
-      } catch (Exception e) {
-         Assert.fail("Handshake failed");
-      }
-      return socket;
-   }
-
-   /**
-    * Close an open ZMQ socket
-    *
-    * @param socket
-    */
-   private void closeSocket(ZMQ.Socket socket) {
-      try {
-         socket.close();
-      } catch (Exception e2) {
-         // ignore
-      }
-   }
-
-   /**
-    * Send the REST query over the socket, don't pull the response
-    *
-    * @param method
-    * @param uri
-    * @param json
-    * @return
-    */
-   private void sendOnly(String method, String uri, String json, ZMQ.Socket socket) {
-
-      StringBuilder sb = new StringBuilder(method);
-      sb.append(ZMQSocket.SEPARATOR).append(uri).append(ZMQSocket.SEPARATOR);
-
-      if (json != null) {
-         sb.append(json);
-      }
-      try {
-         socket.send(sb.toString().getBytes("UTF-8"), 0);
-      } catch (UnsupportedEncodingException e) {
-         Assert.fail("Exception when sending/receiving message");
-      }
-      if (method.equals("PUT") && json != null && !json.isEmpty()) {
-         recordsInserted++;
-      }
-
-   }
-
-   /**
-    * Receive a response to a REST query previously sent
-    *
-    * @param method
-    * @param uri
-    * @param json
-    * @param socket
-    * @return
-    */
-   private String recvOnly(ZMQ.Socket socket) {
-
-      String result;
-
-      byte[] response = socket.recv(0);
-      result = new String(response, Charset.forName("UTF-8"));
-
+      result = job.recv();
+      recordsInserted += job.mRecordsInserted;
       return result;
    }
 
