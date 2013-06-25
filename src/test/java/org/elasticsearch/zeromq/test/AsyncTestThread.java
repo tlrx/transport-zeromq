@@ -25,7 +25,7 @@ public class AsyncTestThread implements Callable<Integer> {
    private String mType;
    private ZMQ.Socket mSocket;
    private ZMQ.Context mContext = null;
-   public Integer mRecordsInserted = 0;
+   private Integer mRecordsInserted;
 
    /**
     * Get a connected ZMQ socket
@@ -122,6 +122,7 @@ public class AsyncTestThread implements Callable<Integer> {
       return recvOnly(mSocket);
    }
    public AsyncTestThread(String address, String index, String type) {
+      this.mRecordsInserted = 0;
       mAddress = address;
       mUri = "/" + index + "/" + type + "/";
       mIndex = index;
@@ -168,7 +169,6 @@ public class AsyncTestThread implements Callable<Integer> {
          expectedReplies.add(expected);
       }
       String reply;
-      i = 0;
       //System.out.println("receiving replies:");
       while (!expectedReplies.isEmpty()) {
          //System.out.println("receiving reply:" + i.toString());
