@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.xcontent.XContentBuilder;
@@ -26,6 +28,7 @@ public class ZMQTransportPluginTest {
     * ØMQ Socket binding adress, must be coherent with elasticsearch.yml config file 
     */
    private static final String address = "tcp://localhost:9800";
+   private static Integer recordsInserted = 0;
 
    @BeforeClass
    public static void setUpBeforeClass() throws Exception {
@@ -65,13 +68,13 @@ public class ZMQTransportPluginTest {
       ZMQ.Socket socket;
       socket = getSocket();
 
-      sendOnly(method,uri,json,socket);
+      sendOnly(method, uri, json, socket);
 
       String result;
       result = recvOnly(socket);
 
       closeSocket(socket);
-      
+
       return result;
    }
 
@@ -95,8 +98,8 @@ public class ZMQTransportPluginTest {
 
    /**
     * Close an open ZMQ socket
-    * 
-    * @param socket 
+    *
+    * @param socket
     */
    private void closeSocket(ZMQ.Socket socket) {
       try {
@@ -108,7 +111,7 @@ public class ZMQTransportPluginTest {
 
    /**
     * Send the REST query over the socket, don't pull the response
-    * 
+    *
     * @param method
     * @param uri
     * @param json
@@ -127,12 +130,15 @@ public class ZMQTransportPluginTest {
       } catch (UnsupportedEncodingException e) {
          Assert.fail("Exception when sending/receiving message");
       }
+      if (method.equals("PUT") && !json.isEmpty()) {
+         recordsInserted++;
+      }
 
    }
 
    /**
     * Receive a response to a REST query previously sent
-    * 
+    *
     * @param method
     * @param uri
     * @param json
@@ -154,30 +160,38 @@ public class ZMQTransportPluginTest {
       System.out.println("Async Test start:");
       ZMQ.Socket socket;
       socket = getSocket();
-      
+
       String method;
-      method = "POST";
-      
+      method = "PUT";
+
       String uriBase;
-      uriBase = "/asyncTests/test/";
-      
+      uriBase = "/async_tests/test/";
+
       String jsonBase;
       jsonBase = "{\"test\":";
       System.out.println("Sending multiple strings:");
-      for (Integer i = 0 ; i < 10 ; i++) {
-         sendOnly(method,uriBase+i.toString(),jsonBase+i.toString()+"}",socket);
-      }
-      String reply; 
-      System.out.println("receiving replies:");
-      for (Integer i = 0 ; i < 10 ; i++) {
-         System.out.println("receiving reply:"+i.toString());
-         reply = recvOnly(socket);
+      Set<String> expectedReplies = new HashSet<>();
+      Integer i = 0;
+      for (; i < 10; i++) {
+         String json = jsonBase + i.toString() + "}";
+         System.out.println("Sending " + method + "|" + uriBase + i.toString() + "|" + json);
+         sendOnly(method, uriBase + i.toString(), json, socket);
          String expected;
-         expected = "201|CREATED|{\"ok\":true,\"_index\":\"asyncTests\",\"_type\":\"test\",\"_id\":";
+         expected = "201|CREATED|{\"ok\":true,\"_index\":\"async_tests\",\"_type\":\"test\",\"_id\":\"";
          expected += i.toString();
-         expected += ",\"_version\":1}";
-         Assert.assertEquals(expected, reply);
+         expected += "\",\"_version\":1}";
+         expectedReplies.add(expected);
       }
+      String reply;
+      i = 0;
+      System.out.println("receiving replies:");
+      for (; i < 10; i++) {
+         System.out.println("receiving reply:" + i.toString());
+         reply = recvOnly(socket);
+         System.out.println("Got " + reply);
+         Assert.assertTrue(expectedReplies.remove(reply));
+      }
+      Assert.assertTrue(expectedReplies.isEmpty());
       closeSocket(socket);
    }
 
@@ -269,7 +283,7 @@ public class ZMQTransportPluginTest {
    @Test
    public void testSearch() throws IOException {
       String response = sendAndReceive("GET", "/_all/_search", "{\"query\":{\"match_all\":{}}}");
-      Assert.assertTrue(response.contains("\"hits\":{\"total\":3"));
+      Assert.assertTrue(response.contains("\"hits\":{\"total\":"+recordsInserted.toString()));
 
       response = sendAndReceive("GET", "_search", "{\"query\":{\"bool\":{\"must\":[{\"range\":{\"year\":{\"gte\":1820,\"lte\":1832}}}],\"must_not\":[],\"should\":[]}},\"from\":0,\"size\":50,\"sort\":[],\"facets\":{},\"version\":true}:");
       Assert.assertTrue(response.contains("\"hits\":{\"total\":2"));
