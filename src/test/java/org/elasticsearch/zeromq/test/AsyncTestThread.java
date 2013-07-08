@@ -25,7 +25,7 @@ public class AsyncTestThread implements Callable<Integer> {
    private String mType;
    private ZMQ.Socket mSocket;
    private ZMQ.Context mContext = null;
-   private Integer mRecordsInserted;
+   public Integer mRecordsInserted;
 
    /**
     * Get a connected ZMQ socket
