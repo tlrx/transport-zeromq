@@ -12,7 +12,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.network.NetworkService;
@@ -94,7 +94,7 @@ public class ZMQQueueServerImpl extends
 	}
 
 	@Override
-	protected void doStart() throws ElasticSearchException {
+	protected void doStart() throws ElasticsearchException {
 
 		logger.debug("Starting ØMQ dealer socket...");
 		dealer = context.socket(ZMQ.DEALER);
@@ -144,7 +144,7 @@ public class ZMQQueueServerImpl extends
 	}
 
 	@Override
-	protected void doClose() throws ElasticSearchException {
+	protected void doClose() throws ElasticsearchException {
 		logger.info("Closing ØMQ server...");
 
         // After next incoming message, sockets will close themselves
@@ -183,7 +183,7 @@ public class ZMQQueueServerImpl extends
 	}
 
 	@Override
-	protected void doStop() throws ElasticSearchException {
+	protected void doStop() throws ElasticsearchException {
 		logger.debug("Stopping ØMQ server...");
 	}
 
