@@ -3,14 +3,16 @@ package org.elasticsearch.zeromq;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.elasticsearch.rest.AbstractRestResponse;
+import org.elasticsearch.rest.RestResponse;
 import org.elasticsearch.rest.RestStatus;
+import org.elasticsearch.common.bytes.BytesReference;
+import org.elasticsearch.common.bytes.BytesArray;
 
 /**
  * @author tlrx
  *
  */
-public class ZMQRestResponse extends AbstractRestResponse {
+public class ZMQRestResponse extends RestResponse {
 
    private final RestStatus status;
 
@@ -34,20 +36,13 @@ public class ZMQRestResponse extends AbstractRestResponse {
    }
 
    @Override
-   public byte[] content() throws IOException {
+   public BytesReference content() {
+      
       if (body == null) {
          byte[] emptyArray = new byte[0];
-         return emptyArray;
+         return new BytesArray(emptyArray);
       }
-      return body.array();
-   }
-
-   @Override
-   public int contentLength() throws IOException {
-      if (body == null) {
-         return 0;
-      }
-      return body.remaining();
+      return new BytesArray(body.array());
    }
 
    @Override
@@ -77,7 +72,7 @@ public class ZMQRestResponse extends AbstractRestResponse {
       ByteBuffer bContent = null;
 
       try {
-         bContent = ByteBuffer.wrap(content());
+         bContent = ByteBuffer.wrap(content().toBytes());
       } catch (Exception e) {
          bContent = ByteBuffer.wrap(e.getMessage().getBytes());
       }
@@ -90,10 +85,5 @@ public class ZMQRestResponse extends AbstractRestResponse {
       payload.put(bContent);
 
       return payload.array();
-   }
-
-   @Override
-   public int contentOffset() throws IOException {
-      throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
    }
 }
