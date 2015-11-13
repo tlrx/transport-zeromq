@@ -121,6 +121,10 @@ h3. Other examples
 
 The @ZMQTransportPluginTest@ Java class in test package has other examples.
 
+-----
+
+This software is licensed under the Apache License, version 2 ("ALv2").
+
 
 Thanks to "David Pilato":https://github.com/dadoonet for the Maven pom and README files.
 
