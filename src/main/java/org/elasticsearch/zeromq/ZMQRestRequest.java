@@ -1,17 +1,18 @@
 package org.elasticsearch.zeromq;
 
-import org.elasticsearch.common.Bytes;
-import org.elasticsearch.common.Unicode;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.elasticsearch.common.bytes.BytesArray;
+import org.elasticsearch.common.bytes.BytesReference;
+import org.elasticsearch.common.io.Streams;
 import org.elasticsearch.rest.support.AbstractRestRequest;
 import org.elasticsearch.rest.support.RestUtils;
 import org.elasticsearch.zeromq.exception.NoURIFoundZMQException;
 import org.elasticsearch.zeromq.exception.UnsupportedMethodZMQException;
 import org.elasticsearch.zeromq.exception.ZMQTransportException;
-
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * @author tlrx
@@ -29,8 +30,9 @@ public class ZMQRestRequest extends AbstractRestRequest {
 
 	private final Map<String, String> params;
 
-	public ByteBuffer body;
-
+	public BytesArray body;
+	
+    
 	public ZMQRestRequest(String payload, List<byte[]> parts) {
 		super();
 		this.parts = parts;
@@ -85,7 +87,7 @@ public class ZMQRestRequest extends AbstractRestRequest {
 
 			// Content
 			int indexContent = payload.indexOf(ZMQSocket.SEPARATOR, m.length() + uri.length());
-			body = ByteBuffer.wrap(payload.substring(indexContent+1).getBytes());
+			body = new BytesArray(payload.substring(indexContent+1).getBytes());
 		}
 	}
 
@@ -106,45 +108,12 @@ public class ZMQRestRequest extends AbstractRestRequest {
 
 	@Override
 	public boolean hasContent() {
-		return ((body != null) && (body.remaining() > 0));
+		return ((body != null) && (body.length() > 0));
 	}
 
 	@Override
 	public boolean contentUnsafe() {
 		return false;
-	}
-
-	@Override
-	public byte[] contentByteArray() {
-		if (body == null) {
-			return Bytes.EMPTY_ARRAY;
-		}
-		return body.array();
-	}
-
-	@Override
-	public int contentByteArrayOffset() {
-		if (body == null) {
-			return 0;
-		}
-		return body.arrayOffset() + body.position();
-	}
-
-	@Override
-	public int contentLength() {
-		if (body == null) {
-			return 0;
-		}
-		return body.remaining();
-	}
-
-	@Override
-	public String contentAsString() {
-		if (body == null) {
-			return "";
-		}
-		return Unicode.fromBytes(contentByteArray(), contentByteArrayOffset(),
-				contentLength());
 	}
 
 	@Override
@@ -176,6 +145,12 @@ public class ZMQRestRequest extends AbstractRestRequest {
 			return defaultValue;
 		}
 		return value;
+	}
+
+	@Override
+	public BytesReference content()
+	{
+		return body;
 	}
 
 }

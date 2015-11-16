@@ -33,7 +33,6 @@ import static org.elasticsearch.common.util.concurrent.EsExecutors.*;
 public class ZMQServer extends AbstractLifecycleComponent<ZMQServer> {
 
 	private final NodeService nodeService;
-
 	private volatile ZMQServerTransport transport;
 
 	@Inject
