@@ -19,7 +19,7 @@
 
 package org.elasticsearch.zeromq;
 
-import org.elasticsearch.ElasticSearchException;
+import org.elasticsearch.ElasticsearchException;
 import org.elasticsearch.common.component.AbstractLifecycleComponent;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.settings.Settings;
@@ -46,7 +46,7 @@ public class ZMQServer extends AbstractLifecycleComponent<ZMQServer> {
 	}
 
 	@Override
-	protected void doStart() throws ElasticSearchException {
+	protected void doStart() throws ElasticsearchException {
 
 		logger.debug("Starting ØMQ server...");
 		daemonThreadFactory(settings, "zeromq_server").newThread(
@@ -61,13 +61,13 @@ public class ZMQServer extends AbstractLifecycleComponent<ZMQServer> {
 
 
 	@Override
-	protected void doStop() throws ElasticSearchException {
+	protected void doStop() throws ElasticsearchException {
 		nodeService.removeAttribute("zeromq_address");
         transport.stop();
 	}
 
 	@Override
-	protected void doClose() throws ElasticSearchException {
+	protected void doClose() throws ElasticsearchException {
 		transport.close();
 	}
 }
