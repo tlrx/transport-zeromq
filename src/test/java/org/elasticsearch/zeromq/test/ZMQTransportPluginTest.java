@@ -25,7 +25,7 @@ public class ZMQTransportPluginTest {
 	private static ZMQ.Context context = null;
 	
 	/*
-	 * ØMQ Socket binding adress, must be coherent with elasticsearch.yml config file 
+	 * ØMQ Socket binding address, must be coherent with elasticsearch.yml config file 
 	 */
 	private static final String address = "tcp://localhost:9800";
 	
