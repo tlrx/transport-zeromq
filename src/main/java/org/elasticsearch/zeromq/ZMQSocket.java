@@ -124,7 +124,7 @@ public class ZMQSocket implements Runnable {
                 socket.send(response.payload(), 0);
 
             } else if(lastException != null) {
-                // An error occured
+                // An error occurred
                 socket.send(("Unable to process ØMQ message [" + lastException.getMessage() + "]").getBytes(), 0);
 
             } else {
